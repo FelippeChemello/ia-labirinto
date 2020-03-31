@@ -1,0 +1,143 @@
+<html>
+  <head></head>
+  <body>
+    <div id="game"></div>
+    <div id="build">
+        <h3 id='titulo'>Escolha a posição para Inicio do Labirinto</h3>
+        <table> </table>
+    </div>
+    <script type="text/javascript" src="https://rawgithub.com/craftyjs/Crafty/release/dist/crafty-min.js"></script>
+    <script>
+    window.onload = () => {
+        // loadTable()
+        window.actions = {}
+        window.actions.Inicio = "20";
+        window.actions.Final = "79";
+        window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
+        
+        crafty()
+    } 
+
+    function crafty() {
+        document.querySelector("#build").style.display = "none";
+
+        Crafty.init(500, 500, document.querySelector('div#game'));
+        Crafty.background('gray')
+
+        inicioX = retornaInicioX();
+        inicioY = retornaInicioY();
+console.warn(inicioX, inicioY)
+        cubo = Crafty.e('Cubo, Canvas, Color, Fourway, Collision')
+            .attr({x: inicioX, y: inicioY+10, w: 25, h: 25})
+            .color('#F00')
+            .fourway(200)
+            .bind('Move', function(from) {
+                console.log(from)
+                if(this.hit('Parede') || this.hit('Obstaculo')){
+                    this.attr({x: parseInt(from._x), y: parseInt(from._y)});
+                }
+                if(this.hit('Finish')){
+                    alert("Chegou ao fim")
+                }
+            })
+
+        craftyMontaBordas();
+        craftyMontaObstaculos();            
+        
+    };
+
+    function craftyMontaObstaculos() {
+        window.actions.Paredes.forEach((elemento, index, arr) => {
+            let linha = elemento[0];
+            let coluna = elemento[1];
+            
+            Crafty.e('Obstaculo, 2D, Canvas, Color')
+                .attr({x: 49*coluna, y: 49*linha, w: 49, h: 49})
+                .color('black');   
+        });   
+
+        let linha = window.actions.Final[0];
+        let coluna = window.actions.Final[1];
+        console.log(linha,coluna)
+        Crafty.e('Finish, 2D, Canvas, Color')
+            .attr({x: 49*coluna, y: 49*linha, w: 49, h: 49})
+            .color('yellow');   
+
+    }
+
+    function retornaInicioX() {
+        let linha = window.actions.Inicio[1];
+        return linha*49+10
+    }
+
+    function retornaInicioY() {
+        let coluna = window.actions.Inicio[0];
+        return coluna*49+10
+    }
+
+    function craftyMontaBordas() {
+        Crafty.e('Parede, 2D, Canvas, Color')
+            .attr({x: 0, y: 0, w: 500, h: 10})
+            .color('black');
+        
+        Crafty.e('Parede, 2D, Canvas, Color')
+            .attr({x: 0, y: 0, w: 10, h: 500})
+            .color('black');
+
+        Crafty.e('Parede, 2D, Canvas, Color')
+            .attr({x: 490, y: 0, w: 10, h: 500})
+            .color('black');
+
+        Crafty.e('Parede, 2D, Canvas, Color')
+            .attr({x: 0, y: 490, w: 500, h: 10})
+            .color('black');
+    }
+
+    function loadTable() {
+        window.actions = {
+            'Inicio': null,
+            'Final': null,
+            'Paredes': []
+        }
+        var tbdy = document.createElement('tbody');
+        for (var i = 0; i < 10; i++) {
+            var tr = document.createElement('tr');
+            for (var j = 0; j < 10; j++) {
+                const id = `${i}${j}`;
+                var button = document.createElement('button');
+                button.style.height = "25px";
+                button.style.width = "25px";
+                button.setAttribute('id', id)
+                button.onclick = function(el) {
+                    if (!window.actions.Inicio) {
+                        el.target.innerText = "I"
+                        window.actions.Inicio = el.target.id;
+                        trocaFraseDeSolicitacao()
+                    } else if (!window.actions.Final) {
+                        el.target.innerText = "F"
+                        window.actions.Final = el.target.id;
+                        trocaFraseDeSolicitacao()
+                    } else {
+                        el.target.innerText = "X"
+                        window.actions.Paredes.push(el.target.id);
+                    }
+                }
+                var td = document.createElement('td');
+                td.appendChild(button)
+                tr.appendChild(td)
+            }
+            tbdy.appendChild(tr);
+        }
+        document.querySelector('table').appendChild(tbdy);
+    }
+
+    function trocaFraseDeSolicitacao() {
+        const h3 = document.querySelector('h3#titulo');
+        if (!window.actions.Final) {
+            h3.innerText = "Selecione a posição para Destino do Labirinto"
+        } else {
+            h3.innerHTML = "Clique para adicionar paredes ao Labirinto. <br> <button onclick='crafty()'> Quando estiver finalizado clique aqui</button>";       }
+    }
+    </script>
+  </body>
+</html>
