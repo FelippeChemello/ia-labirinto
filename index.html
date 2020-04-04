@@ -2,6 +2,7 @@
   <head></head>
   <body>
     <div id="game"></div>
+    <button onclick="window.algorithmType='blind'">Algoritmo Cego (Randomico)</button>
     <div id="build">
         <h3 id='titulo'>Escolha a posição para Inicio do Labirinto</h3>
         <table> </table>
@@ -11,6 +12,12 @@
     window.onload = () => {
         // loadTable()
         window.actions = {}
+        window.dx = 0;
+        window.dy = 0;
+        window.count = 0;
+        window.speed = 5;
+        window.blockLength = 49;
+        window.algorithmType;
         window.actions.Inicio = "20";
         window.actions.Final = "79";
         window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
@@ -26,18 +33,28 @@
 
         inicioX = retornaInicioX();
         inicioY = retornaInicioY();
-console.warn(inicioX, inicioY)
-        cubo = Crafty.e('Cubo, Canvas, Color, Fourway, Collision')
+        
+        window.cubo = Crafty.e('Cubo, Canvas, Color, Fourway, Collision')
             .attr({x: inicioX, y: inicioY+10, w: 25, h: 25})
             .color('#F00')
             .fourway(200)
-            .bind('Move', function(from) {
-                console.log(from)
-                if(this.hit('Parede') || this.hit('Obstaculo')){
-                    this.attr({x: parseInt(from._x), y: parseInt(from._y)});
+            .bind('UpdateFrame', () => {
+                window.cubo.x += window.dx;
+                window.cubo.y += window.dy;
+                window.count++;
+                if (window.algorithmType == 'blind') {
+                    blindAlgorithm()
                 }
-                if(this.hit('Finish')){
-                    alert("Chegou ao fim")
+            })
+            .bind('Move', function() {
+                if (this.hit('Finish')) {
+                    alert("Parabens\nVocê ganhou");
+                    stopMov();
+                }
+                if (this.hit('Obstaculo')) {
+                    if (window.algorithmType == 'blind') {
+                        blindAlgorithmHit()
+                    }
                 }
             })
 
@@ -46,13 +63,64 @@ console.warn(inicioX, inicioY)
         
     };
 
+    function blindAlgorithm() {
+        if (window.count > window.stopped+1) {
+            console.log('a')
+            stopMov()
+            getNewRandomMove()
+            window.state = '';
+        }
+        if (window.count > window.blockLength/window.speed) {
+            console.log('b')
+            stopMov()
+            getNewRandomMove()
+        }
+    }
+
+    function blindAlgorithmHit() {
+        invertMov()
+    }
+
+    function invertMov() {
+        window.stopped = window.count;
+        window.cubeState = 'wait';
+        window.dx = -1*window.dx;
+        window.dy = -1*window.dy;
+    }
+
+    function stopMov() {
+        window.stopped = 99999999999;
+        window.count = 0;
+        window.dx = 0;
+        window.dy = 0;
+    }
+
+    function getNewRandomMove() {
+        switch (getRandomInt(1, 5)) {
+            case 1: window.dx = window.speed; break;
+            case 2: window.dx = -window.speed; break;
+            case 3: window.dy = window.speed; break;
+            case 4: window.dy = -window.speed; break;
+            default: console.log("ERRO")
+        }
+    }
+
+    function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    }
+
     function craftyMontaObstaculos() {
         window.actions.Paredes.forEach((elemento, index, arr) => {
             let linha = elemento[0];
             let coluna = elemento[1];
             
             Crafty.e('Obstaculo, 2D, Canvas, Color')
-                .attr({x: 49*coluna, y: 49*linha, w: 49, h: 49})
+                .attr({ x: window.blockLength*coluna, 
+                        y: window.blockLength*linha, 
+                        w: window.blockLength, 
+                        h: window.blockLength})
                 .color('black');   
         });   
 
@@ -60,35 +128,38 @@ console.warn(inicioX, inicioY)
         let coluna = window.actions.Final[1];
         console.log(linha,coluna)
         Crafty.e('Finish, 2D, Canvas, Color')
-            .attr({x: 49*coluna, y: 49*linha, w: 49, h: 49})
+            .attr({ x: window.blockLength*coluna, 
+                    y: window.blockLength*linha, 
+                    w: window.blockLength, 
+                    h: window.blockLength})
             .color('yellow');   
 
     }
 
     function retornaInicioX() {
         let linha = window.actions.Inicio[1];
-        return linha*49+10
+        return linha*window.blockLength+10
     }
 
     function retornaInicioY() {
         let coluna = window.actions.Inicio[0];
-        return coluna*49+10
+        return coluna*window.blockLength+10
     }
 
     function craftyMontaBordas() {
-        Crafty.e('Parede, 2D, Canvas, Color')
+        Crafty.e('Obstaculo, 2D, Canvas, Color')
             .attr({x: 0, y: 0, w: 500, h: 10})
             .color('black');
         
-        Crafty.e('Parede, 2D, Canvas, Color')
+        Crafty.e('Obstaculo, 2D, Canvas, Color')
             .attr({x: 0, y: 0, w: 10, h: 500})
             .color('black');
 
-        Crafty.e('Parede, 2D, Canvas, Color')
+        Crafty.e('Obstaculo, 2D, Canvas, Color')
             .attr({x: 490, y: 0, w: 10, h: 500})
             .color('black');
 
-        Crafty.e('Parede, 2D, Canvas, Color')
+        Crafty.e('Obstaculo, 2D, Canvas, Color')
             .attr({x: 0, y: 490, w: 500, h: 10})
             .color('black');
     }
