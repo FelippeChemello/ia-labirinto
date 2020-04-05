@@ -24,7 +24,7 @@
 
         window.actions.Inicio = "20";
         window.actions.Final = "79";
-        window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
+        window.actions.Paredes = ["40", "10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
         
         createPlayerMap();
 
@@ -138,17 +138,35 @@
     
     function updatePlayerMapPosition(set) {
         const pos = getCurrentPlayerLocation();
+        backupPlayerMap()
         if (isNaN(set)) {
             window.playerMap[pos.y][pos.x] = set;
         } else {
-            if (isNaN(window.playerMap[pos.y][pos.x])) {
-                window.playerMap[pos.y][pos.x] = set;
-            }else {
-                window.playerMap[pos.y][pos.x] += set;
+            if (isNaN(window.playerMapBkp[pos.y][pos.x])) {
+                console.log('Errado')
+                window.playerMap[pos.y][pos.x] = set + window.playerMapBkp[pos.y][pos.x];  
+            }else{
+                console.log('certo' + (window.playerMapBkp[pos.y][pos.x] + set))
+                console.warn('linha:'+pos.y, 'coluna:' + pos.x);
+                console.warn(window.playerMapBkp[pos.y][pos.x])
+                console.warn(window.playerMapBkp);
+                window.playerMap[pos.y][pos.x] = (window.playerMapBkp[pos.y][pos.x] + set);
             }
         }
          //TODO: Resolver questao de quando passar pela segunda vez, colocar valor do local como 2
          //Hoje ou é x ou é 1, pois quando passa dnv fica X e quando remarca, como era X marca como 1
+    }
+
+    function backupPlayerMap() {
+        window.playerMapBkp = window.playerMap;
+        
+        for (linha in playerMapBkp) {
+            for (coluna in playerMapBkp[linha]) {
+                if (playerMapBkp[linha][coluna] == 'x') {
+                    playerMapBkp[linha][coluna] = 1;
+                }
+            }
+        }
     }
 
     function getBestPath(paths) {
