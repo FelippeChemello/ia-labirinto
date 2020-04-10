@@ -119,7 +119,7 @@
             window.cubeState = '';
         } else if (window.count > window.blockLength) {
             stopMov()
-            updatePlayerMapPosition('x');
+            // updatePlayerMapPosition('x');
             const paths = getPathsAvailable()
             const bestPath = getBestPath(paths)
             heuristicMove(bestPath);
@@ -190,36 +190,107 @@
     function getPathsAvailable() {
         const obj = {};
 
-        window.playerMap.forEach((elementoLinha, indexLinha, array) => {
-            elementoLinha.forEach((elementoColuna, indexColuna, arrayLinha) => {
-                if (elementoColuna == 'x') {
-                    obj.posLinha = indexLinha;
-                    obj.posColuna = indexColuna;
-                }
-            })
-        })
+        // window.playerMap.forEach((elementoLinha, indexLinha, array) => {
+        //     elementoLinha.forEach((elementoColuna, indexColuna, arrayLinha) => {
+        //         if (elementoColuna == 'x') {
+        //             obj.posLinha = indexLinha;
+        //             obj.posColuna = indexColuna;
+        //         }
+        //     })
+        // })
+
+        const position = getCurrentPlayerLocation()
+
+        obj.posLinha = position.y;
+        obj.posColuna = position.x;
 
         const tempMovD = window.playerMap[obj.posLinha]?.[obj.posColuna+1];
         const tempMovE = window.playerMap[obj.posLinha]?.[obj.posColuna-1];
         const tempMovC = window.playerMap[obj.posLinha-1]?.[obj.posColuna];
         const tempMovB = window.playerMap[obj.posLinha+1]?.[obj.posColuna];
 
-        obj.movD = (tempMovD !== undefined) ? tempMovD : 9;
-        obj.movE = (tempMovE !== undefined) ? tempMovE : 9;
-        obj.movC = (tempMovC !== undefined) ? tempMovC : 9;
-        obj.movB = (tempMovB !== undefined) ? tempMovB : 9;
+        obj.movD = (tempMovD !== undefined && tempMovD !== NaN) ? tempMovD : 999;
+        obj.movE = (tempMovE !== undefined && tempMovE !== NaN) ? tempMovE : 999;
+        obj.movC = (tempMovC !== undefined && tempMovC !== NaN) ? tempMovC : 999;
+        obj.movB = (tempMovB !== undefined && tempMovB !== NaN) ? tempMovB : 999;
         
         return obj;
     }
 
     function createPlayerMap() {
         for (let i = 0; i < 10; i++) {
-            window.playerMap.push(new Array(10).fill(0))
+            window.playerMap.push(new Array(10).fill(null))
         }
 
-        let linhaJogador = window.actions.Inicio[0];
-        let colunaJogador = window.actions.Inicio[1];
-        window.playerMap[linhaJogador][colunaJogador] = 'x';
+        // let linhaJogador = window.actions.Inicio[0];
+        // let colunaJogador = window.actions.Inicio[1];
+        // window.playerMap[linhaJogador][colunaJogador] = 'x';
+
+        let linhaFinal = window.actions.Final[0]
+        let colunaFinal = window.actions.Final[1];
+        window.playerMap[linhaFinal][colunaFinal] = -1;
+
+        window.actions.Paredes.forEach((elemento, index, arr) => {
+            let linha = elemento[0];
+            let coluna = elemento[1];
+            
+            window.playerMap[linha][coluna] = 999;
+        });   
+
+        minhafuncao()
+
+        console.log(window.playerMap)
+    }
+
+    function minhafuncao() {
+        o = 0;
+        first = true;
+        do{
+            for (let k = 0; k <= countElementInMatrix(o) || first; k++){
+                first = false;
+                window.playerMap.forEach((linha, indexLinha, array) => {
+                    linha.forEach((element, indexColuna, arr) => {
+                        if (element == o-1){
+                            try {
+                                const posD = window.playerMap[indexLinha]?.[indexColuna+1];
+                                const posE = window.playerMap[indexLinha]?.[indexColuna-1];
+                                const posC = window.playerMap[indexLinha-1]?.[indexColuna];
+                                const posB = window.playerMap[indexLinha+1]?.[indexColuna];
+
+                                if (posD !== undefined && posD !== NaN && posD !== 999 && posD == null) {
+                                    window.playerMap[indexLinha][indexColuna+1] = o;
+                                }
+                                if (posE !== undefined && posE !== NaN && posE !== 999 && posE == null) {
+                                    window.playerMap[indexLinha][indexColuna-1] = o;
+                                }
+                                if (posC !== undefined && posC !== NaN && posC !== 999 && posC == null) {
+                                    window.playerMap[indexLinha-1][indexColuna] = o;
+                                }
+                                if (posB !== undefined && posB !== NaN && posB !== 999 && posB == null) {
+                                    window.playerMap[indexLinha+1][indexColuna] = o;
+                                }                                
+                            }catch (e) {
+                                console.log("Posicao inválida\n Linha: " + indexLinha + " Coluna: " + indexColuna)
+                            }
+                        }
+                    })
+                })       
+            }
+            o++;
+        }while (countElementInMatrix(null) > 0)
+    }
+
+    function countElementInMatrix(number) {
+        let count = 0;
+        window.playerMap.forEach((linha, index, array) => {
+            linha.forEach((element, i, arr) => {
+                if (element == number) {
+                    count++;
+                }
+            })
+        })
+
+        return count;
     }
 
     function randomProperty (obj) {
