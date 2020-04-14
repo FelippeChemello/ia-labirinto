@@ -15,7 +15,6 @@
     <script type="text/javascript" src="https://rawgithub.com/craftyjs/Crafty/release/dist/crafty-min.js"></script>
     <script>
     window.onload = () => {
-        // loadTable()
         window.actions = {}
         window.dx = 0;
         window.dy = 0;
@@ -25,27 +24,32 @@
         window.algorithmType;
         window.playerMap = [];
         window.oldValue = 0;
+        window.passedPositions = [];
 
-        window.actions.Inicio = "20";
-        window.actions.Final = "79";
-        window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
-        
-        createPlayerMap();
+        loadTable()
 
-        crafty()
+        // window.actions.Inicio = "20";
+        // window.actions.Final = "79";
+        // window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
+
+        // crafty()
     } 
 
     function crafty() {
+        createPlayerMap();
+
         document.querySelector("#build").style.display = "none";
 
         Crafty.init(500, 500, document.querySelector('div#game'));
         Crafty.background('gray')
 
+        criaElementosLinha();
+
         inicioX = retornaInicioX();
         inicioY = retornaInicioY();
         
         window.cubo = Crafty.e('Cubo, Canvas, Color, Fourway, Collision')
-            .attr({x: inicioX, y: inicioY+10, w: 25, h: 25})
+            .attr({x: inicioX, y: inicioY+5, w: 25, h: 25})
             .color('#F00')
             .fourway(200)
             .bind('UpdateFrame', () => {
@@ -60,7 +64,9 @@
             })
             .bind('Move', function() {
                 if (this.hit('Finish')) {
+                    desenhaCaminhoTrilhado();
                     alert("Parabens\nVocê ganhou");
+                    window.algorithmType = '';
                     stopMov();
                 }
                 if (this.hit('Obstaculo')) {
@@ -73,25 +79,26 @@
             })
 
         craftyMontaBordas();
-        craftyMontaObstaculos();            
-        
+        craftyMontaObstaculos();       
     };
 
     function heuristicAlgorithmHit() {
-        console.log(window.playerMap)
         window.cubeState = 'wait';
         window.count = 0;
 
         const direction = getMovementDirection();
         const pos = getCurrentPlayerLocation();
 
-        console.log(direction, pos)
-
-        switch (direction) {
-            case 'd': window.playerMap[pos.y][pos.x+1] += 99; break;
-            case 'e': window.playerMap[pos.y][pos.x-1] += 99; break;
-            case 'c': window.playerMap[pos.y-1][pos.x] += 99; break;
-            case 'b': window.playerMap[pos.y+1][pos.x] += 99; break;
+        try {
+            switch (direction) {
+                case 'd': window.playerMap[pos.y][pos.x+1] += 99; break;
+                case 'e': window.playerMap[pos.y][pos.x-1] += 99; break;
+                case 'c': window.playerMap[pos.y-1][pos.x] += 99; break;
+                case 'b': window.playerMap[pos.y+1][pos.x] += 99; break;
+            }
+        } catch (e) {
+            console.error("ERRO")
+            console.log(window.playerMap);
         }
 
         window.dx = -1*window.dx;
@@ -119,7 +126,7 @@
             window.cubeState = '';
         } else if (window.count > window.blockLength) {
             stopMov()
-            // updatePlayerMapPosition('x');
+            saveLocation()
             const paths = getPathsAvailable()
             const bestPath = getBestPath(paths)
             heuristicMove(bestPath);
@@ -128,6 +135,7 @@
 
     function heuristicMove(mov) {
         updatePlayerMapPosition(1)
+        saveLocation()
         
         switch (mov) {
             case 'movD': window.dx = window.speed; break;
@@ -147,13 +155,8 @@
             window.playerMap[pos.y][pos.x] = set;
         } else {
             if (isNaN(window.playerMapBkp[pos.y][pos.x])) {
-                console.log('Errado')
                 window.playerMap[pos.y][pos.x] = set + window.playerMapBkp[pos.y][pos.x];  
             }else{
-                console.log('certo' + (window.playerMapBkp[pos.y][pos.x] + set))
-                console.warn('linha:'+pos.y, 'coluna:' + pos.x);
-                console.warn(window.playerMapBkp[pos.y][pos.x])
-                console.warn(window.playerMapBkp);
                 window.playerMap[pos.y][pos.x] = (window.playerMapBkp[pos.y][pos.x] + set);
             }
         }
@@ -237,12 +240,12 @@
             window.playerMap[linha][coluna] = 999;
         });   
 
-        minhafuncao()
+        obtemMelhorCaminhoPartindoDoDestino()
 
         console.log(window.playerMap)
     }
 
-    function minhafuncao() {
+    function obtemMelhorCaminhoPartindoDoDestino() {
         o = 0;
         first = true;
         do{
@@ -300,14 +303,13 @@
 
     function blindAlgorithm() {
         if (window.count > window.stopped+1) {
-            console.log('a')
             stopMov()
             getNewRandomMove()
             window.state = '';
         }
         if (window.count > window.blockLength/window.speed) {
-            console.log('b')
             stopMov()
+            saveLocation()
             getNewRandomMove()
         }
     }
@@ -336,7 +338,7 @@
             case 2: window.dx = -window.speed; break;
             case 3: window.dy = window.speed; break;
             case 4: window.dy = -window.speed; break;
-            default: console.log("ERRO")
+            default: console.error("ERRO")
         }
     }
 
@@ -361,7 +363,6 @@
 
         let linha = window.actions.Final[0];
         let coluna = window.actions.Final[1];
-        console.log(linha,coluna)
         Crafty.e('Finish, 2D, Canvas, Color')
             .attr({ x: window.blockLength*coluna, 
                     y: window.blockLength*linha, 
@@ -443,6 +444,116 @@
             h3.innerText = "Selecione a posição para Destino do Labirinto"
         } else {
             h3.innerHTML = "Clique para adicionar paredes ao Labirinto. <br> <button onclick='crafty()'> Quando estiver finalizado clique aqui</button>";       }
+    }
+
+    function saveLocation() {
+        const pos = getCurrentPlayerLocation();
+
+        const posFromMatrix = parseInt(`${pos.y}${pos.x}`);
+
+        window.passedPositions.push(posFromMatrix);
+    }
+
+    function desenhaCaminhoTrilhado() {
+        // window.passedPositions = [20, 30, 40, 50, 60, 70, 71, 72, 62, 52, 53, 54, 64, 74, 84, 94, 95, 96, 97, 98, 88, 78];
+        window.passedPositions.forEach((element, index, array) => {
+            const linha = parseInt(element.toString()[0])*49;
+            const coluna = parseInt(element.toString()[1])*49;
+
+            let mov;
+            if (array[index+1]){
+                const proxLinha = parseInt(array[index+1].toString()[0])*49;
+                const proxColuna = parseInt(array[index+1].toString()[1])*49;
+                
+                if (parseInt(proxLinha) != NaN && proxLinha > linha) {
+                    Crafty.e("LineBaixo").attr({x: coluna + 25, y: linha + 25})
+                    mov = 'B'
+                } else if (parseInt(proxLinha) != NaN && proxLinha < linha) {
+                    Crafty.e("LineCima").attr({x: coluna + 25, y: linha + 25})
+                    mov = 'C'
+                } else if (parseInt(proxColuna) != NaN && proxColuna > coluna) {
+                    Crafty.e("LineDireita").attr({x: coluna + 25, y: linha + 25})
+                    mov = 'D'
+                } else if (parseInt(proxColuna) != NaN && proxColuna < coluna) {
+                    Crafty.e("LineEsquerda").attr({x: coluna + 25, y: linha + 25})
+                    mov = 'E'
+                } else {
+                    console.error(element, array[index+1]);
+                }
+
+                console.log(linha, coluna, mov)
+            }
+        })
+    }
+
+    function criaElementosLinha() {
+        Crafty.c("LineBaixo", {
+            init: function () {
+                this.requires("2D, Canvas, Color");
+                this.bind("Draw", this._draw_me);
+                this.ready = true;
+            },
+            _draw_me: function (e) {
+                var ctx = e.ctx;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#39FF14";
+                ctx.beginPath();
+                ctx.moveTo(e.pos._x, e.pos._y);
+                ctx.lineTo(e.pos._x, e.pos._y + 49);
+                ctx.stroke();
+            }
+        });
+
+        Crafty.c("LineCima", {
+            init: function () {
+                this.requires("2D, Canvas, Color");
+                this.bind("Draw", this._draw_me);
+                this.ready = true;
+            },
+            _draw_me: function (e) {
+                var ctx = e.ctx;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#39FF14";
+                ctx.beginPath();
+                ctx.moveTo(e.pos._x, e.pos._y);
+                ctx.lineTo(e.pos._x, e.pos._y - 49);
+                ctx.stroke();
+            }
+        });
+
+        Crafty.c("LineDireita", {
+            init: function () {
+                this.requires("2D, Canvas, Color");
+                this.bind("Draw", this._draw_me);
+                this.ready = true;
+            },
+            _draw_me: function (e) {
+                var ctx = e.ctx;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#39FF14";
+                ctx.beginPath();
+                ctx.moveTo(e.pos._x, e.pos._y);
+                ctx.lineTo(e.pos._x + 49, e.pos._y);
+                ctx.stroke();
+            }
+        });
+
+        Crafty.c("LineEsquerda", {
+            init: function () {
+                this.requires("2D, Canvas, Color");
+                this.bind("Draw", this._draw_me);
+                this.ready = true;
+            },
+            _draw_me: function (e) {
+                var ctx = e.ctx;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#39FF14";
+                ctx.beginPath();
+                ctx.moveTo(e.pos._x, e.pos._y);
+                ctx.lineTo(e.pos._x - 49, e.pos._y);
+                ctx.stroke();
+            }
+        });
     }
     </script>
   </body>
