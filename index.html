@@ -1,13 +1,10 @@
-<!-- TODO: -->
-<!-- Validar movC e movB quando estiver no limite do mapa -->
-<!-- Só aumentar a numeração quando não for por hit em parede -->
 <html>
   <head></head>
   <body>
+    <!-- DIV aonde é inserida o canvas -->
     <div id="game"></div>
     <button onclick="window.algorithmType='blind'">Algoritmo Cego (Randomico)</button>
     <button onclick="window.algorithmType='heuristic'">Algoritmo Heuristico (Inteligente)</button>
-    <button onclick="window.algorithmType=''">PARA</button>
     <div id="build">
         <h3 id='titulo'>Escolha a posição para Inicio do Labirinto</h3>
         <table> </table>
@@ -15,6 +12,7 @@
     <script type="text/javascript" src="https://rawgithub.com/craftyjs/Crafty/release/dist/crafty-min.js"></script>
     <script>
     window.onload = () => {
+        // Inicialização de variaveis
         window.actions = {}
         window.dx = 0;
         window.dy = 0;
@@ -26,33 +24,43 @@
         window.oldValue = 0;
         window.passedPositions = [];
 
-        loadTable()
+        // Permite selecionar o caminho do labirinto 
+        // ATENÇÃO: PODEM OCORRER BUGS CASO ALTERE O CAMINHO
+        // loadTable()
 
-        // window.actions.Inicio = "20";
-        // window.actions.Final = "79";
-        // window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
-
-        // crafty()
+        //Caso descomente a linha da chamada da função "loadTable()" a qual permite selecionar o caminho do labirinto, comentar as 4 linhas a seguir
+        window.actions.Inicio = "20";
+        window.actions.Final = "79";
+        window.actions.Paredes = ["10", "00", "01", "02", "12", "22", "32", "42", "41", "51", "61", "90", "80", "91", "92", "82", "73", "63", "43", "33", "23", "44", "45", "65", "75", "85", "83", "66", "67", "57", "47", "37", "27", "26", "25", "15", "07", "08", "09", "19", "29", "39", "49", "59", "69", "68", "86", "87", "76", "77", "99", "89"]
+        crafty()
     } 
 
     function crafty() {
+        //Monta o mapa do player definindo na matriz as paredes e o valor de cada caminho
         createPlayerMap();
 
+        //Esconde a table de construção do labirinto 
         document.querySelector("#build").style.display = "none";
 
+        //Inicia a biblioteca e o canvas
         Crafty.init(500, 500, document.querySelector('div#game'));
         Crafty.background('gray')
 
-        criaElementosLinha();
-
+        //Pega os valores de inicio do jogados
         inicioX = retornaInicioX();
         inicioY = retornaInicioY();
         
+        //Define os valores nas variaveis oldPosX e oldPosY para que possa ser consumido na construção do caminho percorrido
+        window.oldPosX = inicioX;
+        window.oldPosY = inicioY+5;
+
+        //Cria o jogador definindo posição inicial, eixos de movimentação, algoritmo de movimentaçao e efeitos de colisão
         window.cubo = Crafty.e('Cubo, Canvas, Color, Fourway, Collision')
             .attr({x: inicioX, y: inicioY+5, w: 25, h: 25})
             .color('#F00')
             .fourway(200)
             .bind('UpdateFrame', () => {
+                // Em cada frame é realizado o incremendo da posição x e y com a velocidade dx e dy respectivamente
                 window.cubo.x += window.dx;
                 window.cubo.y += window.dy;
                 window.count++;
@@ -63,12 +71,14 @@
                 }
             })
             .bind('Move', function() {
+                // Caso colida com um elemento Finish: alerta informando o final, finaliza o algoritmo e o movimento e desenha o caminho percorrido
                 if (this.hit('Finish')) {
                     desenhaCaminhoTrilhado();
                     alert("Parabens\nVocê ganhou");
                     window.algorithmType = '';
                     stopMov();
                 }
+                //Caso colida com um elemento Obstaculo: Executa a ação de acordo com o algoritmo escolhido
                 if (this.hit('Obstaculo')) {
                     if (window.algorithmType == 'blind') {
                         blindAlgorithmHit()
@@ -78,17 +88,25 @@
                 }
             })
 
+        //Cria objeto de colisão com laterais do labirinto
         craftyMontaBordas();
+        //Cria objeto de colisão com paredes do labirinto
         craftyMontaObstaculos();       
     };
 
+    //Função que trata colisão do jogador com parede ou laterais quando utilizado algoritmos heuristico
     function heuristicAlgorithmHit() {
+        //Variaveis para controle de movimentação do jogador
         window.cubeState = 'wait';
         window.count = 0;
 
+        //Verifica para onde estava tentando ir quando ocorreu a colisão para que possa definir a posição da parede com valor +99
         const direction = getMovementDirection();
+        //Obtém a posição na matriz que o jogador está
         const pos = getCurrentPlayerLocation();
 
+        //Caso venha a colidir, normalmente por efeito de exceção de alguma outra função de movimentação ou por esgotamento de possibilidades (Jogador preso em um espaço sem saída)
+        //Define o local da colisão com valor +99, assim evitando aquela posição futuramente
         try {
             switch (direction) {
                 case 'd': window.playerMap[pos.y][pos.x+1] += 99; break;
@@ -101,11 +119,13 @@
             console.log(window.playerMap);
         }
 
+        //Velocidade do jogador é invertida para que ele se distancie do obstaculo
         window.dx = -1*window.dx;
         window.dy = -1*window.dy;
     }
 
     function getMovementDirection() {
+        //Através da velocidade do jogador é verificada a direção do mesmo
         if (window.dx > 0) return 'd';
         if (window.dx < 0) return 'e';
         if (window.dy < 0) return 'c';
@@ -114,13 +134,21 @@
 
     function getCurrentPlayerLocation() {
         const obj = {};
+        // Obtém a posição do jogador de acordo com as coordenadas no canvas
+        // Converte as coordenas do jogador no canvas para posição na Matriz
+        // Para isso verifica-se a posição do cubo, soma-se com a espessura da parede e divide-se pela altura/largura do quadrado (tamanho de cada posição do tabuleiro)
         obj.x = Math.floor((window.cubo.x + 10)/window.blockLength); //Soma-se 10 devido a parede
-        obj.y = Math.floor((window.cubo.y + 10 )/window.blockLength); //Soma-se 10 devido a parede
+        obj.y = Math.floor((window.cubo.y + 15)/window.blockLength); //Soma-se 15 devido a parede
 
         return obj;
     }
 
+    //Função de movimentação para algoritmo heuristico
     function heuristicAlgorithm() {
+        //Caso colidiu deve voltar por 3 frames parar o movimento e esperar o próximo movimento
+        //Se não verifica se o cubo já andou 49 pixels (Tamanho de cada posição do tabuleiro), ou seja, concluiu o movimento
+        //Se sim, para o movimento, salva a posição para utilizar no desenho do caminho percorrido e busca o próximo movimento a realizar, após o realiza
+        //Caso não se enquadre em nenhuma condição continua o movimento até o concluir (49 pixel)
         if (window.cubeState == 'wait' && window.count > 3) {
             stopMov();
             window.cubeState = '';
@@ -133,10 +161,8 @@
         }
     }
 
-    function heuristicMove(mov) {
-        updatePlayerMapPosition(1)
-        saveLocation()
-        
+    //Realiza o movimento informado por parametro, alterando a velocidade da movimentação
+    function heuristicMove(mov) {        
         switch (mov) {
             case 'movD': window.dx = window.speed; break;
             case 'movE': window.dx = -window.speed; break;
@@ -144,74 +170,50 @@
             case 'movB': window.dy = window.speed; break
         }
         console.log(mov)
+        //Reinicia a contagem de pixels para que possa ser controlada o termino da execução do movimento (49 pixels)
         window.count = 0;
     }
-    
-    function updatePlayerMapPosition(set) {
-        const pos = getCurrentPlayerLocation();
-        backupPlayerMap()
-        if (isNaN(set)) {
-            window.oldValue = window.playerMap[pos.y][pos.x]
-            window.playerMap[pos.y][pos.x] = set;
-        } else {
-            if (isNaN(window.playerMapBkp[pos.y][pos.x])) {
-                window.playerMap[pos.y][pos.x] = set + window.playerMapBkp[pos.y][pos.x];  
-            }else{
-                window.playerMap[pos.y][pos.x] = (window.playerMapBkp[pos.y][pos.x] + set);
-            }
-        }
-    }
 
-    function backupPlayerMap() {
-        window.playerMapBkp = window.playerMap;
-        
-        for (linha in playerMapBkp) {
-            for (coluna in playerMapBkp[linha]) {
-                if (playerMapBkp[linha][coluna] == 'x') {
-                    playerMapBkp[linha][coluna] = window.oldValue;
-                }
-            }
-        }
-    }
-
+    //Dos caminhos disponiveis recebidos por paremtro, verifica qual possui valor mais baixo
+    //Ou seja, está mais próximo do final e define o próximo movimento
     function getBestPath(paths) {
+        // Deleta a posição do jogador 
         delete paths.posLinha;
         delete paths.posColuna;
         
+        // Obtém o valor mais baixo da posições disponiveis
         let lowerValue = Math.min(...Object.values(paths))
         
+        // Deleta todas as posiçõe com valor mais alto que o mais baixo
         for (const mov in paths) {
             if (paths[mov] > lowerValue) {
                 delete paths[mov];
             }
         }
         
-        //Se mais de um caminho for disponivel, pega um aleatorio, se nao, envia aquele mesmo
+        //Se tiver mais de um caminho com o valor minimo, retorna um aleatorio, se nao, envia o unico disponivel
         return randomProperty(paths);
     }
 
+
+    // Filtra os caminhos disponiveis
     function getPathsAvailable() {
         const obj = {};
 
-        // window.playerMap.forEach((elementoLinha, indexLinha, array) => {
-        //     elementoLinha.forEach((elementoColuna, indexColuna, arrayLinha) => {
-        //         if (elementoColuna == 'x') {
-        //             obj.posLinha = indexLinha;
-        //             obj.posColuna = indexColuna;
-        //         }
-        //     })
-        // })
-
+        // Obtém a posição do jogador
         const position = getCurrentPlayerLocation()
 
+        // Altera o nome da variavel para facilitar a compreensão
         obj.posLinha = position.y;
         obj.posColuna = position.x;
 
+        //Define temporário para verificar se é undefined ou NaN
         const tempMovD = window.playerMap[obj.posLinha]?.[obj.posColuna+1];
         const tempMovE = window.playerMap[obj.posLinha]?.[obj.posColuna-1];
         const tempMovC = window.playerMap[obj.posLinha-1]?.[obj.posColuna];
         const tempMovB = window.playerMap[obj.posLinha+1]?.[obj.posColuna];
 
+        // Se for fora da matriz define um valor muito alto (999) para não ser o melhor caminho
         obj.movD = (tempMovD !== undefined && tempMovD !== NaN) ? tempMovD : 999;
         obj.movE = (tempMovE !== undefined && tempMovE !== NaN) ? tempMovE : 999;
         obj.movC = (tempMovC !== undefined && tempMovC !== NaN) ? tempMovC : 999;
@@ -220,46 +222,58 @@
         return obj;
     }
 
+    //Cria mapa do player
     function createPlayerMap() {
+        // Inicialmente cria uma matriz 10x10 com todos os valores null
         for (let i = 0; i < 10; i++) {
             window.playerMap.push(new Array(10).fill(null))
         }
 
-        // let linhaJogador = window.actions.Inicio[0];
-        // let colunaJogador = window.actions.Inicio[1];
-        // window.playerMap[linhaJogador][colunaJogador] = 'x';
-
+        //Define a posição final no mapa do player com valor -1 (menor valor possivel)
         let linhaFinal = window.actions.Final[0]
         let colunaFinal = window.actions.Final[1];
         window.playerMap[linhaFinal][colunaFinal] = -1;
 
+        //Define as posições com obstaculos no mapa do player com 999
         window.actions.Paredes.forEach((elemento, index, arr) => {
             let linha = elemento[0];
             let coluna = elemento[1];
-            
             window.playerMap[linha][coluna] = 999;
         });   
 
+        //Define os valores para cada posição não definida ainda (null) de acordo com a distancia da posição até o final
         obtemMelhorCaminhoPartindoDoDestino()
 
         console.log(window.playerMap)
     }
 
+
     function obtemMelhorCaminhoPartindoDoDestino() {
+        // Variavel "o" é o valor (custo da posição até o final) que será atribuida a posição 
         o = 0;
+
+        // Obriga que o script seja executado a primeira vez
         first = true;
+
+        // Executa a numeração dos caminhos até que todos os caminhos sejam numerados
+        // Não possuam mais caminhos null
         do{
+            // Para cada elemento com valor anteriormente definido
             for (let k = 0; k <= countElementInMatrix(o) || first; k++){
                 first = false;
+                //Itera sobre todas as posições da matriz
                 window.playerMap.forEach((linha, indexLinha, array) => {
                     linha.forEach((element, indexColuna, arr) => {
+                        //Se o elemento for o valor atual - 1, ou seja, tiver sido definido da iteração anteior
                         if (element == o-1){
                             try {
+                                // Verifica os vizinhos deste elemento
                                 const posD = window.playerMap[indexLinha]?.[indexColuna+1];
                                 const posE = window.playerMap[indexLinha]?.[indexColuna-1];
                                 const posC = window.playerMap[indexLinha-1]?.[indexColuna];
                                 const posB = window.playerMap[indexLinha+1]?.[indexColuna];
 
+                                //Se o vizinho não tiver sido definido e for válido (Não undefined e Não NaN) define o vizinho como valor "o"
                                 if (posD !== undefined && posD !== NaN && posD !== 999 && posD == null) {
                                     window.playerMap[indexLinha][indexColuna+1] = o;
                                 }
@@ -279,10 +293,12 @@
                     })
                 })       
             }
+            //Incrementa o valor/custo de "o", ou seja, fica mais distante do final
             o++;
         }while (countElementInMatrix(null) > 0)
     }
 
+    // Retorna a quantidade do numero informado por parametro dentro da matriz
     function countElementInMatrix(number) {
         let count = 0;
         window.playerMap.forEach((linha, index, array) => {
@@ -296,12 +312,17 @@
         return count;
     }
 
+    // Retorna uma propriedade aletoria do objeto do parametro
     function randomProperty (obj) {
         var keys = Object.keys(obj);
         return keys[ keys.length * Math.random() << 0];
     };
 
+    // Função de movimentação do Algoritmo Cego (Randomico)
     function blindAlgorithm() {
+        //Se tiver colidido (entra no primeiro IF) retorna por um frame, para o movimento e busca um novo movimento 
+        //Quando a quantidade de frames for maior que o tamanho do quadro divido pela velocidade, ou seja, concluiu o movimento
+        //Para o movimento e salva a posição para o renderização do caminho e busca um novo movimento
         if (window.count > window.stopped+1) {
             stopMov()
             getNewRandomMove()
@@ -314,17 +335,23 @@
         }
     }
 
+    // Função de colisão do algoritmo cego
     function blindAlgorithmHit() {
         invertMov()
     }
 
     function invertMov() {
+        // Guarda o numero do quadro que houve colisão
         window.stopped = window.count;
+        // Sinaliza que deve aguardar o movimento de retorno
         window.cubeState = 'wait';
+
+        // Inverte a velocidade para o jogador se afastar do Obstaculo
         window.dx = -1*window.dx;
         window.dy = -1*window.dy;
     }
 
+    // Para o movimento, zerando a contagem de quadros e velocidade
     function stopMov() {
         window.stopped = 99999999999;
         window.count = 0;
@@ -332,6 +359,7 @@
         window.dy = 0;
     }
 
+    // Executa uma movimentação randomica
     function getNewRandomMove() {
         switch (getRandomInt(1, 5)) {
             case 1: window.dx = window.speed; break;
@@ -342,12 +370,14 @@
         }
     }
 
+    //Retorna um valor randomico entre os parametros fornecidos
     function getRandomInt(min, max) {
         min = Math.ceil(min);
         max = Math.floor(max);
         return Math.floor(Math.random() * (max - min)) + min;
     }
 
+    // Função de construção das paredes internas do labirinto e definição da posição da entidade "Final" (destino) no labirinto
     function craftyMontaObstaculos() {
         window.actions.Paredes.forEach((elemento, index, arr) => {
             let linha = elemento[0];
@@ -372,16 +402,19 @@
 
     }
 
+    //Retorna a coordenada X do inicio do jogador
     function retornaInicioX() {
         let linha = window.actions.Inicio[1];
         return linha*window.blockLength+10
     }
 
+    //Retorna a coordenada Y do inicio do jogador
     function retornaInicioY() {
         let coluna = window.actions.Inicio[0];
         return coluna*window.blockLength+10
     }
 
+    //Função de construção das paredes externas do labirinto
     function craftyMontaBordas() {
         Crafty.e('Obstaculo, 2D, Canvas, Color')
             .attr({x: 0, y: 0, w: 500, h: 10})
@@ -400,6 +433,8 @@
             .color('black');
     }
 
+    //Função de montagem da tabela para montagem do labirinto
+    //Cria os elementos e insere na página
     function loadTable() {
         window.actions = {
             'Inicio': null,
@@ -438,6 +473,7 @@
         document.querySelector('table').appendChild(tbdy);
     }
 
+    // Função para alteração do texto exibido durante a montagem do labirinto
     function trocaFraseDeSolicitacao() {
         const h3 = document.querySelector('h3#titulo');
         if (!window.actions.Final) {
@@ -446,6 +482,7 @@
             h3.innerHTML = "Clique para adicionar paredes ao Labirinto. <br> <button onclick='crafty()'> Quando estiver finalizado clique aqui</button>";       }
     }
 
+    //Salva posição para renderizar o caminho percorrido
     function saveLocation() {
         const pos = getCurrentPlayerLocation();
 
@@ -454,107 +491,36 @@
         window.passedPositions.push(posFromMatrix);
     }
 
+    //Desenha o caminho percorrido com HTML canvas
     function desenhaCaminhoTrilhado() {
         // window.passedPositions = [20, 30, 40, 50, 60, 70, 71, 72, 62, 52, 53, 54, 64, 74, 84, 94, 95, 96, 97, 98, 88, 78];
+        
+        const canvas = document.querySelector("#game canvas");
+        const ctx = canvas.getContext("2d");
+        ctx.strokeStyle = "#FF0000";
+        ctx.lineWidth = 14;
+        
+        ctx.moveTo(window.oldPosX+25, window.oldPosY+25)
+        
         window.passedPositions.forEach((element, index, array) => {
-            const linha = parseInt(element.toString()[0])*49;
-            const coluna = parseInt(element.toString()[1])*49;
+            let linha = parseInt(element.toString()[0])*49+25;
+            let coluna = parseInt(element.toString()[1])*49+25;
 
-            let mov;
-            if (array[index+1]){
-                const proxLinha = parseInt(array[index+1].toString()[0])*49;
-                const proxColuna = parseInt(array[index+1].toString()[1])*49;
-                
-                if (parseInt(proxLinha) != NaN && proxLinha > linha) {
-                    Crafty.e("LineBaixo").attr({x: coluna + 25, y: linha + 25})
-                    mov = 'B'
-                } else if (parseInt(proxLinha) != NaN && proxLinha < linha) {
-                    Crafty.e("LineCima").attr({x: coluna + 25, y: linha + 25})
-                    mov = 'C'
-                } else if (parseInt(proxColuna) != NaN && proxColuna > coluna) {
-                    Crafty.e("LineDireita").attr({x: coluna + 25, y: linha + 25})
-                    mov = 'D'
-                } else if (parseInt(proxColuna) != NaN && proxColuna < coluna) {
-                    Crafty.e("LineEsquerda").attr({x: coluna + 25, y: linha + 25})
-                    mov = 'E'
-                } else {
-                    console.error(element, array[index+1]);
-                }
-
-                console.log(linha, coluna, mov)
+            //Como faz o parse para int o numero 00 é parseado para 0 assim a coluna que deveria receber o valor verdadeiro recebe UNDEFINED
+            //Entao passamos o valor da linha para a coluna e a linha recebe 0
+            //Pois a unica forma de dar este problema é ser 0X onde X representa a posiçao, sendo parseado apenas para X
+            //E a linha recebendo o valor equivocado
+            if (!coluna) {
+                coluna = linha;
+                linha = 25;         //O valor seria linha 0 * 49 + 25, portando 25
             }
+
+            ctx.lineTo(coluna, linha)    
         })
+
+        ctx.stroke();
     }
 
-    function criaElementosLinha() {
-        Crafty.c("LineBaixo", {
-            init: function () {
-                this.requires("2D, Canvas, Color");
-                this.bind("Draw", this._draw_me);
-                this.ready = true;
-            },
-            _draw_me: function (e) {
-                var ctx = e.ctx;
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#39FF14";
-                ctx.beginPath();
-                ctx.moveTo(e.pos._x, e.pos._y);
-                ctx.lineTo(e.pos._x, e.pos._y + 49);
-                ctx.stroke();
-            }
-        });
-
-        Crafty.c("LineCima", {
-            init: function () {
-                this.requires("2D, Canvas, Color");
-                this.bind("Draw", this._draw_me);
-                this.ready = true;
-            },
-            _draw_me: function (e) {
-                var ctx = e.ctx;
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#39FF14";
-                ctx.beginPath();
-                ctx.moveTo(e.pos._x, e.pos._y);
-                ctx.lineTo(e.pos._x, e.pos._y - 49);
-                ctx.stroke();
-            }
-        });
-
-        Crafty.c("LineDireita", {
-            init: function () {
-                this.requires("2D, Canvas, Color");
-                this.bind("Draw", this._draw_me);
-                this.ready = true;
-            },
-            _draw_me: function (e) {
-                var ctx = e.ctx;
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#39FF14";
-                ctx.beginPath();
-                ctx.moveTo(e.pos._x, e.pos._y);
-                ctx.lineTo(e.pos._x + 49, e.pos._y);
-                ctx.stroke();
-            }
-        });
-
-        Crafty.c("LineEsquerda", {
-            init: function () {
-                this.requires("2D, Canvas, Color");
-                this.bind("Draw", this._draw_me);
-                this.ready = true;
-            },
-            _draw_me: function (e) {
-                var ctx = e.ctx;
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#39FF14";
-                ctx.beginPath();
-                ctx.moveTo(e.pos._x, e.pos._y);
-                ctx.lineTo(e.pos._x - 49, e.pos._y);
-                ctx.stroke();
-            }
-        });
-    }
     </script>
   </body>
 </html>
